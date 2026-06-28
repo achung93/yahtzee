@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+backend/dist/
+*.tsbuildinfo
+
+# Amplify Gen 2 — generated config & local sandbox/secrets
+amplify_outputs.json
+amplify_outputs*
+.amplify/
+amplifyconfiguration*
+amplify-build-config.json
+
+# Logs / env / OS
+*.log
+npm-debug.log*
+.env
+.env.*
+.DS_Store
