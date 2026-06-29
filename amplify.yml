@@ -3,16 +3,17 @@ backend:
   phases:
     build:
       commands:
-        # The Amplify Gen 2 backend (data + gameEngine function) lives in
-        # frontend/amplify. Deploy it, generating amplify_outputs.json.
-        - cd frontend
+        # The app lives in frontend/. Guard the cd so it works whether the
+        # phase starts at the repo root or already inside frontend (the working
+        # directory can carry over between the backend and frontend phases).
+        - 'if [ -d frontend ]; then cd frontend; fi'
         - npm ci --cache .npm --prefer-offline
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
   phases:
     build:
       commands:
-        - cd frontend
+        - 'if [ -d frontend ]; then cd frontend; fi'
         - npm run build
   artifacts:
     baseDirectory: frontend/dist
