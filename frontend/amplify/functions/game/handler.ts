@@ -19,9 +19,10 @@ const { resourceConfig, libraryOptions } =
 Amplify.configure(resourceConfig, libraryOptions);
 const client = generateClient<Schema>();
 
+// AppSync invokes the function resolver with the full request context. The
+// operation name lives at `info.fieldName` (there is no top-level fieldName).
 interface ResolverEvent {
-  typeName: string;
-  fieldName: string;
+  info: { fieldName: string; parentTypeName: string };
   arguments: Record<string, any>;
 }
 
@@ -124,7 +125,7 @@ function seatFor(rec: GameRecord, token: string): number {
 export const handler = async (event: ResolverEvent) => {
   const args = event.arguments;
 
-  switch (event.fieldName) {
+  switch (event.info.fieldName) {
     case "createRoom": {
       const room = createRoomState(String(args.name).trim() || "Player 1");
       const token = newToken();
@@ -197,6 +198,6 @@ export const handler = async (event: ResolverEvent) => {
     }
 
     default:
-      throw new Error(`Unknown action: ${event.fieldName}`);
+      throw new Error(`Unknown action: ${event.info.fieldName}`);
   }
 };
