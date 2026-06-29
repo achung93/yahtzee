@@ -34,11 +34,11 @@ const schema = a
         lastScored: a.json(), // { player, category, points } | null
       })
       .secondaryIndexes((index) => [index("code")])
-      // Clients get read + subscribe only; the gameEngine function's write
-      // access is granted at the schema level below (allow.resource).
-      .authorization((allow) => [
-        allow.publicApiKey().to(["read", "listen"]),
-      ]),
+      // Clients get read-only access (read already grants get/list/search/
+      // listen/sync, i.e. fetching a room and subscribing to updates). All
+      // writes go through the gameEngine function, whose access is granted at
+      // the schema level below (allow.resource).
+      .authorization((allow) => [allow.publicApiKey().to(["read"])]),
 
     // ---- Custom mutations (all run on the gameEngine Lambda) ----
     GameAction: a.customType({
