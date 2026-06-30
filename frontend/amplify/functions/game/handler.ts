@@ -65,6 +65,45 @@ function newCode(): string {
   return code;
 }
 
+// `a.json()` fields must be serialized by the caller: the Amplify client does
+// not auto-stringify arrays for the AWSJSON scalar, so writing a raw array
+// fails with "Variable '<field>' has an invalid value". Stringify on write and
+// decode on read (values may come back native or as a JSON string).
+const JSON_FIELDS = ["players", "tokenHashes", "held", "lastScored"] as const;
+
+function encodeJsonFields(
+  fields: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...fields };
+  for (const k of JSON_FIELDS) {
+    if (k in out) out[k] = JSON.stringify(out[k] ?? null);
+  }
+  return out;
+}
+
+function parseJson<T>(v: unknown, fallback: T): T {
+  if (v == null) return fallback;
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v) as T;
+    } catch {
+      return fallback;
+    }
+  }
+  return v as T;
+}
+
+/** Normalize a raw Game record, decoding its JSON fields. */
+function decodeRecord(data: any): GameRecord {
+  return {
+    ...data,
+    players: parseJson(data.players, [] as Room["players"]),
+    tokenHashes: parseJson(data.tokenHashes, [] as string[]),
+    held: parseJson(data.held, [false, false, false, false, false]),
+    lastScored: parseJson(data.lastScored, null),
+  } as GameRecord;
+}
+
 /** Reconstruct the engine Room from a persisted record. */
 function toRoom(rec: GameRecord): Room {
   return {
@@ -103,7 +142,7 @@ async function loadGame(gameId: string): Promise<GameRecord> {
   const { data, errors } = await client.models.Game.get({ id: gameId });
   if (errors) throw new Error(errors.map((e) => e.message).join(", "));
   if (!data) throw new Error("Game not found.");
-  return data as unknown as GameRecord;
+  return decodeRecord(data);
 }
 
 async function loadGameByCode(code: string): Promise<GameRecord> {
@@ -112,13 +151,13 @@ async function loadGameByCode(code: string): Promise<GameRecord> {
   });
   if (errors) throw new Error(errors.map((e) => e.message).join(", "));
   if (!data || data.length === 0) throw new Error("Room not found.");
-  return data[0] as unknown as GameRecord;
+  return decodeRecord(data[0]);
 }
 
 async function save(gameId: string, fields: Record<string, unknown>) {
   const { errors } = await client.models.Game.update({
     id: gameId,
-    ...fields,
+    ...encodeJsonFields(fields),
   });
   if (errors) throw new Error(errors.map((e) => e.message).join(", "));
 }
@@ -144,11 +183,13 @@ export const handler = async (event: ResolverEvent) => {
         code = newCode();
       }
 
-      const { data, errors } = await client.models.Game.create({
-        code,
-        tokenHashes: [hash(token)],
-        ...roomFields(room),
-      });
+      const { data, errors } = await client.models.Game.create(
+        encodeJsonFields({
+          code,
+          tokenHashes: [hash(token)],
+          ...roomFields(room),
+        }) as any,
+      );
       if (errors) throw new Error(errors.map((e) => e.message).join(", "));
 
       return { gameId: data!.id, code, seatToken: token, seatIndex: 0 };

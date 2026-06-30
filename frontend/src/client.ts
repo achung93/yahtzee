@@ -37,22 +37,36 @@ function toSeat(action: {
   };
 }
 
+// a.json() fields can arrive as native values or as a JSON string (the engine
+// stringifies them on write — see the handler's encodeJsonFields). Decode both.
+function parseJson<T>(v: unknown, fallback: T): T {
+  if (v == null) return fallback;
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v) as T;
+    } catch {
+      return fallback;
+    }
+  }
+  return v as T;
+}
+
 /** Normalize a raw DynamoDB-backed Game record into the typed UI shape. */
 export function toRoomState(rec: any): RoomState {
   return {
     id: rec.id,
     code: rec.code,
     status: rec.status,
-    players: (rec.players ?? []) as Player[],
+    players: parseJson(rec.players, [] as Player[]),
     currentPlayer: rec.currentPlayer ?? 0,
     round: rec.round ?? 1,
     dice: (rec.dice ?? [1, 1, 1, 1, 1]) as number[],
-    held: (rec.held ?? [false, false, false, false, false]) as boolean[],
+    held: parseJson(rec.held, [false, false, false, false, false] as boolean[]),
     rollsLeft: rec.rollsLeft ?? 3,
     hasRolled: rec.hasRolled ?? false,
     finished: rec.finished ?? false,
     winners: (rec.winners ?? []) as string[],
-    lastScored: rec.lastScored ?? null,
+    lastScored: parseJson(rec.lastScored, null),
   };
 }
 
