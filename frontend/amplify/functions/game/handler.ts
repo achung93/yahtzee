@@ -19,11 +19,17 @@ const { resourceConfig, libraryOptions } =
 Amplify.configure(resourceConfig, libraryOptions);
 const client = generateClient<Schema>();
 
-// AppSync invokes the function resolver with the full request context. The
-// operation name lives at `info.fieldName` (there is no top-level fieldName).
+// Amplify Gen 2 invokes the function resolver with a flattened payload that
+// carries `fieldName` at the top level; raw AppSync resolver events instead
+// nest it under `info`. Support both so the operation name is always found.
 interface ResolverEvent {
-  info: { fieldName: string; parentTypeName: string };
+  fieldName?: string;
+  info?: { fieldName?: string };
   arguments: Record<string, any>;
+}
+
+function operationOf(event: ResolverEvent): string {
+  return event.fieldName ?? event.info?.fieldName ?? "";
 }
 
 interface GameRecord {
@@ -125,7 +131,7 @@ function seatFor(rec: GameRecord, token: string): number {
 export const handler = async (event: ResolverEvent) => {
   const args = event.arguments;
 
-  switch (event.info.fieldName) {
+  switch (operationOf(event)) {
     case "createRoom": {
       const room = createRoomState(String(args.name).trim() || "Player 1");
       const token = newToken();
@@ -198,6 +204,6 @@ export const handler = async (event: ResolverEvent) => {
     }
 
     default:
-      throw new Error(`Unknown action: ${event.info.fieldName}`);
+      throw new Error(`Unknown action: ${operationOf(event)}`);
   }
 };
