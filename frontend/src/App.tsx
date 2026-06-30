@@ -3,6 +3,7 @@ import { Home } from "./components/Home";
 import { Lobby } from "./components/Lobby";
 import { Dice } from "./components/Dice";
 import { Scorecard } from "./components/Scorecard";
+import { HowToPlay } from "./components/HowToPlay";
 import { gameApi, Seat } from "./client";
 import { computeTotals } from "./scoring";
 import { Category, RoomState } from "./types";
@@ -26,6 +27,7 @@ export function App() {
   const [keep, setKeep] = useState<boolean[]>(EMPTY_KEEP);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   // Latest seat for use inside async callbacks (avoids stale closures).
   const seatRef = useRef(seat);
   seatRef.current = seat;
@@ -132,14 +134,23 @@ export function App() {
 
   // ---- Render ----
 
+  const help = showHelp ? (
+    <HowToPlay onClose={() => setShowHelp(false)} />
+  ) : null;
+  const openHelp = () => setShowHelp(true);
+
   if (!seat || !room) {
     return (
-      <Home
-        onCreate={handleCreate}
-        onJoin={handleJoin}
-        busy={busy}
-        error={error}
-      />
+      <>
+        <Home
+          onCreate={handleCreate}
+          onJoin={handleJoin}
+          onHelp={openHelp}
+          busy={busy}
+          error={error}
+        />
+        {help}
+      </>
     );
   }
 
@@ -147,14 +158,17 @@ export function App() {
 
   if (room.status === "lobby") {
     return (
-      <Lobby
-        room={room}
-        mySeat={mySeat}
-        onStart={handleStart}
-        onLeave={handleLeave}
-        busy={busy}
-        error={error}
-      />
+      <>
+        <Lobby
+          room={room}
+          mySeat={mySeat}
+          onStart={handleStart}
+          onLeave={handleLeave}
+          busy={busy}
+          error={error}
+        />
+        {help}
+      </>
     );
   }
 
@@ -163,15 +177,21 @@ export function App() {
 
   return (
     <div className="app">
+      {help}
       <header className="topbar">
         <h1>Yahtzee</h1>
         <div className="round">
           Round {Math.min(room.round, TOTAL_ROUNDS)} / {TOTAL_ROUNDS} · Room{" "}
           {room.code}
         </div>
-        <button className="link" onClick={handleLeave}>
-          Leave
-        </button>
+        <div className="topbar-actions">
+          <button className="link" onClick={openHelp} aria-label="How to play">
+            ?
+          </button>
+          <button className="link" onClick={handleLeave}>
+            Leave
+          </button>
+        </div>
       </header>
 
       {room.finished ? (

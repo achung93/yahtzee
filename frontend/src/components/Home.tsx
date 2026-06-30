@@ -3,12 +3,20 @@ import { useState } from "react";
 interface Props {
   onCreate: (name: string) => void;
   onJoin: (code: string, name: string) => void;
+  onHelp: () => void;
   busy: boolean;
   error?: string | null;
   initialCode?: string;
 }
 
-export function Home({ onCreate, onJoin, busy, error, initialCode }: Props) {
+export function Home({
+  onCreate,
+  onJoin,
+  onHelp,
+  busy,
+  error,
+  initialCode,
+}: Props) {
   const [mode, setMode] = useState<"create" | "join">(
     initialCode ? "join" : "create",
   );
@@ -84,6 +92,10 @@ export function Home({ onCreate, onJoin, busy, error, initialCode }: Props) {
           : mode === "create"
             ? "Create room"
             : "Join room"}
+      </button>
+
+      <button type="button" className="link how-to-play" onClick={onHelp}>
+        How to play
       </button>
     </div>
   );
